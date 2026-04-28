@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { CheckCircle, Navigation, MessageCircle, Search, X, Send, Clock, AlertTriangle, FileText, ChevronRight, CornerUpRight, RefreshCw, XCircle, MapPin, Image as ImageIcon, Kanban, Archive, Menu } from 'lucide-react';
+import { CheckCircle, MessageCircle, Search, X, Send, Clock, AlertTriangle, FileText, ChevronRight, CornerUpRight, RefreshCw, XCircle, MapPin, Image as ImageIcon, Kanban, Archive, Menu } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Occurrence {
@@ -342,12 +342,9 @@ const MonitorPanel: React.FC = () => {
       <header style={{ backgroundColor: 'var(--color-primary-dark)', color: 'white', padding: '1rem 1.5rem', boxShadow: 'var(--shadow-md)', zIndex: 10 }}>
         <div className="d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center" style={{ gap: '0.75rem' }}>
-            <button className="btn bg-transparent border-0 p-1 mr-2" style={{ color: 'white' }} onClick={() => setIsSidebarOpen(true)}>
+            <button className="btn bg-transparent border-0 p-0 mr-2" style={{ color: 'white', boxShadow: 'none' }} onClick={() => setIsSidebarOpen(true)}>
               <Menu size={28} />
             </button>
-            <div style={{ backgroundColor: 'var(--color-primary)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
-              <Navigation size={24} style={{ color: 'white' }} />
-            </div>
             <div>
               <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>CTOE | Central de Controle</h1>
               <div className="text-xs" style={{ color: 'var(--color-primary-pale)' }}>Monitoramento</div>
