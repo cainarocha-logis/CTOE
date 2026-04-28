@@ -308,10 +308,11 @@ const MonitorPanel: React.FC = () => {
             let isSlaStopped = ['Resolvida', 'Cancelada', 'Retorno ao CD', 'Entrega Parcial', 'Canhoto retido', 'Reentregar Amanhã'].includes(occ.status);
 
             if (!isSlaStopped) {
-              if (minutes >= 60) slaColor = 'var(--color-danger)';
-              else if (minutes >= 30) slaColor = 'var(--color-warning)';
+              if (minutes >= 60) slaColor = 'rgba(231, 76, 60, 0.12)'; 
+              else if (minutes >= 30) slaColor = 'rgba(243, 156, 18, 0.12)';
+              else slaColor = 'rgba(39, 174, 96, 0.08)';
             } else {
-              slaColor = 'var(--color-border)';
+              slaColor = 'white';
             }
 
             return (
