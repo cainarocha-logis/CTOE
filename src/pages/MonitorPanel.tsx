@@ -315,15 +315,15 @@ const MonitorPanel: React.FC = () => {
             }
 
             return (
-              <div key={occ.id} className="card p-3 card-hover bg-white border-0" style={{ cursor: 'pointer', position: 'relative', borderLeft: unread > 0 ? '4px solid var(--color-primary)' : '4px solid transparent', backgroundColor: unread > 0 ? 'var(--color-info-bg)' : 'white' }} onClick={() => loadOccurrenceDetails(occ)}>
+              <div key={occ.id} className="card p-3 card-hover border-0" style={{ cursor: 'pointer', position: 'relative', borderLeft: unread > 0 ? '4px solid var(--color-primary)' : '4px solid transparent', backgroundColor: unread > 0 ? 'var(--color-info-bg)' : slaColor }} onClick={() => loadOccurrenceDetails(occ)}>
                 {occ.status === 'Nova' && <div className="animate-pulse" style={{ position: 'absolute', top: 12, right: 12, width: 12, height: 12, borderRadius: '50%', backgroundColor: 'var(--color-danger)' }}></div>}
 
                 <div className="d-flex justify-content-between align-items-center mb-2">
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', backgroundColor: unread > 0 ? 'white' : 'var(--color-bg-main)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', backgroundColor: (unread > 0 || !isSlaStopped) ? 'rgba(255,255,255,0.7)' : 'var(--color-bg-main)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
                     {occ.placa}
                   </div>
                   {!isSlaStopped && (
-                    <div className="d-flex align-items-center" style={{ gap: '0.25rem', color: slaColor, fontWeight: 700, fontSize: '0.875rem' }}>
+                    <div className="d-flex align-items-center" style={{ gap: '0.25rem', color: minutes >= 60 ? 'var(--color-danger)' : minutes >= 30 ? 'var(--color-warning)' : 'var(--color-success)', fontWeight: 700, fontSize: '0.875rem' }}>
                       <Clock size={14} /> {minutes}m
                     </div>
                   )}

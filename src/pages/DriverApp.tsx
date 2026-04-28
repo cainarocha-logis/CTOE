@@ -225,7 +225,10 @@ const DriverApp: React.FC = () => {
     const sub = supabase.channel('chat_driver_global')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'occurrence_messages' }, payload => {
         const msg = payload.new as Message;
-        if (msg.sender_type === 'monitor') {
+        // Check if this occurrence belongs to the current driver
+        const isMyOccurrence = myOccurrences.some(o => o.id === msg.occurrence_id);
+        
+        if (msg.sender_type === 'monitor' && isMyOccurrence) {
           if (activeChat === msg.occurrence_id) {
             setChatMessages(prev => [...prev, msg]);
             markChatAsRead(msg.occurrence_id);
@@ -238,7 +241,7 @@ const DriverApp: React.FC = () => {
         }
       }).subscribe();
     return () => { supabase.removeChannel(sub); };
-  }, [activeChat]);
+  }, [activeChat, myOccurrences]);
 
   const toggleNF = (nf: string) => {
     setSelectedNFs(prev => prev.includes(nf) ? prev.filter(n => n !== nf) : [...prev, nf]);
