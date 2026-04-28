@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { CheckCircle, Navigation, MessageCircle, Search, X, Send, Clock, AlertTriangle, FileText, ChevronRight, CornerUpRight, RefreshCw, XCircle, MapPin, Image as ImageIcon, Kanban, Archive } from 'lucide-react';
+import { CheckCircle, Navigation, MessageCircle, Search, X, Send, Clock, AlertTriangle, FileText, ChevronRight, CornerUpRight, RefreshCw, XCircle, MapPin, Image as ImageIcon, Kanban, Archive, Menu } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Occurrence {
@@ -52,6 +52,7 @@ const MonitorPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'detalhes' | 'chat' | 'historico'>('detalhes');
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [viewMode, setViewMode] = useState<'operacao' | 'finalizadas'>('operacao');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [chatPhoto, setChatPhoto] = useState<File | null>(null);
@@ -341,6 +342,9 @@ const MonitorPanel: React.FC = () => {
       <header style={{ backgroundColor: 'var(--color-primary-dark)', color: 'white', padding: '1rem 1.5rem', boxShadow: 'var(--shadow-md)', zIndex: 10 }}>
         <div className="d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center" style={{ gap: '0.75rem' }}>
+            <button className="btn bg-transparent border-0 p-1 mr-2" style={{ color: 'white' }} onClick={() => setIsSidebarOpen(true)}>
+              <Menu size={28} />
+            </button>
             <div style={{ backgroundColor: 'var(--color-primary)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
               <Navigation size={24} style={{ color: 'white' }} />
             </div>
@@ -361,16 +365,28 @@ const MonitorPanel: React.FC = () => {
         </div>
       </header>
 
-      <div className="d-flex flex-grow-1" style={{ overflow: 'hidden' }}>
-        <div style={{ width: '250px', backgroundColor: 'white', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
-          <button className={`btn w-100 text-left px-4 py-4 border-0 rounded-0 d-flex align-items-center ${viewMode === 'operacao' ? 'bg-light text-primary font-weight-bold' : 'text-secondary bg-white'}`} style={{ gap: '0.75rem', borderRight: viewMode === 'operacao' ? '4px solid var(--color-primary)' : '4px solid transparent' }} onClick={() => setViewMode('operacao')}>
+      {/* Retractable Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 40 }} onClick={() => setIsSidebarOpen(false)}></div>
+      )}
+
+      {/* Retractable Sidebar Menu */}
+      <div style={{ position: 'fixed', top: 0, left: isSidebarOpen ? 0 : '-300px', width: '280px', height: '100%', backgroundColor: 'white', zIndex: 50, transition: 'left 0.3s ease', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)' }}>
+        <div className="p-4 border-bottom d-flex justify-content-between align-items-center bg-light">
+          <h4 className="m-0 font-weight-bold" style={{ color: 'var(--color-primary-dark)', fontSize: '1.1rem' }}>Menu Principal</h4>
+          <button className="btn p-1 bg-transparent border-0 text-secondary" onClick={() => setIsSidebarOpen(false)}><X size={24}/></button>
+        </div>
+        <div className="d-flex flex-column pt-2">
+          <button className={`btn w-100 text-left px-4 py-4 border-0 rounded-0 d-flex align-items-center ${viewMode === 'operacao' ? 'bg-light text-primary font-weight-bold' : 'text-secondary bg-white'}`} style={{ gap: '0.75rem', borderRight: viewMode === 'operacao' ? '4px solid var(--color-primary)' : '4px solid transparent' }} onClick={() => { setViewMode('operacao'); setIsSidebarOpen(false); }}>
             <Kanban size={20} /> Painel Operacional
           </button>
-          <button className={`btn w-100 text-left px-4 py-4 border-0 rounded-0 d-flex align-items-center ${viewMode === 'finalizadas' ? 'bg-light text-primary font-weight-bold' : 'text-secondary bg-white'}`} style={{ gap: '0.75rem', borderRight: viewMode === 'finalizadas' ? '4px solid var(--color-primary)' : '4px solid transparent' }} onClick={() => setViewMode('finalizadas')}>
+          <button className={`btn w-100 text-left px-4 py-4 border-0 rounded-0 d-flex align-items-center ${viewMode === 'finalizadas' ? 'bg-light text-primary font-weight-bold' : 'text-secondary bg-white'}`} style={{ gap: '0.75rem', borderRight: viewMode === 'finalizadas' ? '4px solid var(--color-primary)' : '4px solid transparent' }} onClick={() => { setViewMode('finalizadas'); setIsSidebarOpen(false); }}>
             <Archive size={20} /> Histórico Finalizadas
           </button>
         </div>
+      </div>
 
+      <div className="d-flex flex-grow-1" style={{ overflow: 'hidden' }}>
         <div className="p-4 flex-grow-1" style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', alignItems: 'flex-start', backgroundColor: 'var(--color-bg-main)' }}>
         {viewMode === 'operacao' ? (
           <>
