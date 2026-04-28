@@ -342,7 +342,7 @@ const MonitorPanel: React.FC = () => {
       <header style={{ backgroundColor: 'var(--color-primary-dark)', color: 'white', padding: '1rem 1.5rem', boxShadow: 'var(--shadow-md)', zIndex: 10 }}>
         <div className="d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center" style={{ gap: '0.75rem' }}>
-            <button className="btn bg-transparent border-0 p-0 mr-2" style={{ color: 'white', boxShadow: 'none' }} onClick={() => setIsSidebarOpen(true)}>
+            <button className="bg-transparent border-0 p-0 mr-2" style={{ color: 'white', boxShadow: 'none', cursor: 'pointer' }} onClick={() => setIsSidebarOpen(true)}>
               <Menu size={28} />
             </button>
             <div>
