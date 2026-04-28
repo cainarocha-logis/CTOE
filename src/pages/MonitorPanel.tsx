@@ -48,13 +48,13 @@ const MonitorPanel: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  
+
   const [activeTab, setActiveTab] = useState<'detalhes' | 'chat' | 'historico'>('detalhes');
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [viewMode, setViewMode] = useState<'operacao' | 'finalizadas' | 'canhotos'>('operacao');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [chatPhoto, setChatPhoto] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -69,7 +69,7 @@ const MonitorPanel: React.FC = () => {
       .from('occurrences')
       .select('*')
       .order('data_abertura', { ascending: false });
-    
+
     if (data) {
       setOccurrences(data);
       fetchUnreadCounts(data.map(o => o.id));
@@ -84,7 +84,7 @@ const MonitorPanel: React.FC = () => {
       .in('occurrence_id', occurrenceIds)
       .eq('is_read', false)
       .eq('sender_type', 'motorista');
-      
+
     if (data) {
       const counts: Record<string, number> = {};
       data.forEach(msg => {
@@ -100,7 +100,7 @@ const MonitorPanel: React.FC = () => {
       .eq('occurrence_id', occurrenceId)
       .eq('sender_type', 'motorista')
       .eq('is_read', false);
-      
+
     setUnreadCounts(prev => ({ ...prev, [occurrenceId]: 0 }));
   };
 
@@ -109,7 +109,7 @@ const MonitorPanel: React.FC = () => {
       if (!alertCtxRef.current) alertCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       const ctx = alertCtxRef.current;
       if (ctx.state === 'suspended') ctx.resume();
-      
+
       const oscillator = ctx.createOscillator();
       const gainNode = ctx.createGain();
       oscillator.type = 'sine';
@@ -129,7 +129,7 @@ const MonitorPanel: React.FC = () => {
       if (!chatCtxRef.current) chatCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       const ctx = chatCtxRef.current;
       if (ctx.state === 'suspended') ctx.resume();
-      
+
       const oscillator = ctx.createOscillator();
       const gainNode = ctx.createGain();
       oscillator.type = 'triangle';
@@ -182,10 +182,10 @@ const MonitorPanel: React.FC = () => {
   const loadOccurrenceDetails = async (occ: Occurrence) => {
     setActiveOccurrence(occ);
     setActiveTab('chat');
-    
+
     const resChat = await supabase.from('occurrence_messages').select('*').eq('occurrence_id', occ.id).order('created_at', { ascending: true });
     setChatMessages(resChat.data || []);
-    
+
     const resHist = await supabase.from('occurrence_history').select('*').eq('occurrence_id', occ.id).order('created_at', { ascending: false });
     setHistoryItems(resHist.data || []);
   };
@@ -211,15 +211,15 @@ const MonitorPanel: React.FC = () => {
     e.preventDefault();
     if (!activeOccurrence || isUploading) return;
     if (!newMessage.trim() && !chatPhoto) return;
-    
+
     setIsUploading(true);
     let attachmentUrl = null;
-    
+
     try {
       if (chatPhoto) {
         attachmentUrl = await uploadFile(chatPhoto);
       }
-      
+
       await supabase.from('occurrence_messages').insert([{
         occurrence_id: activeOccurrence.id,
         sender_type: 'monitor',
@@ -228,16 +228,16 @@ const MonitorPanel: React.FC = () => {
         attachment_url: attachmentUrl,
         is_read: false
       }]);
-      
+
       setNewMessage('');
       setChatPhoto(null);
       const { data } = await supabase.from('occurrence_messages').select('*').eq('occurrence_id', activeOccurrence.id).order('created_at', { ascending: true });
       setChatMessages(data || []);
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    } catch(err: any) {
+    } catch (err: any) {
       alert("Erro ao enviar imagem: " + err.message);
     }
-    
+
     setIsUploading(false);
   };
 
@@ -245,11 +245,11 @@ const MonitorPanel: React.FC = () => {
     if (!activeOccurrence) return;
     await supabase.from('occurrences').update({ status, responsavel_atual: 'Monitor' }).eq('id', activeOccurrence.id);
     await supabase.from('occurrence_history').insert([{
-       occurrence_id: activeOccurrence.id,
-       acao: actionName,
-       status_anterior: activeOccurrence.status,
-       status_novo: status,
-       responsavel: 'Central Operacional'
+      occurrence_id: activeOccurrence.id,
+      acao: actionName,
+      status_anterior: activeOccurrence.status,
+      status_novo: status,
+      responsavel: 'Central Operacional'
     }]);
 
     if (['Resolvida', 'Entrega Parcial', 'Retorno ao CD', 'Cancelada', 'Canhoto retido', 'Reentregar Amanhã'].includes(status)) {
@@ -257,13 +257,18 @@ const MonitorPanel: React.FC = () => {
       fetchOccurrences();
       return;
     }
-    
+
     const { data } = await supabase.from('occurrences').select('*').eq('id', activeOccurrence.id).single();
     if (data) setActiveOccurrence(data);
     fetchOccurrences();
-    
+
     const resHist = await supabase.from('occurrence_history').select('*').eq('occurrence_id', activeOccurrence.id).order('created_at', { ascending: false });
     setHistoryItems(resHist.data || []);
+  };
+
+  const getMinutesPassed = (dateString: string) => {
+    const diff = new Date().getTime() - new Date(dateString).getTime();
+    return Math.floor(diff / 60000);
   };
 
   const getDaysPassed = (dateString: string) => {
@@ -287,56 +292,56 @@ const MonitorPanel: React.FC = () => {
       );
     });
     const columnOccurrences = filteredBySearch.filter(o => statuses.includes(o.status));
-    
+
     return (
       <div style={{ flex: '1', minWidth: '320px', maxWidth: '380px', display: 'flex', flexDirection: 'column' }}>
         <div className="mb-3 d-flex justify-content-between align-items-center bg-white p-3 rounded" style={{ boxShadow: 'var(--shadow-sm)', borderTop: `4px solid var(--color-primary)` }}>
           <h4 style={{ fontSize: '1rem', margin: 0, fontWeight: 600, color: 'var(--color-primary-dark)' }}>{title}</h4>
           <span className="badge badge-primary" style={{ fontSize: '0.875rem' }}>{columnOccurrences.length}</span>
         </div>
-        
+
         <div className="d-flex flex-column" style={{ gap: '1rem', overflowY: 'auto', height: 'calc(100vh - 160px)', paddingRight: '0.5rem' }}>
           {columnOccurrences.map(occ => {
-            const days = getDaysPassed(occ.data_abertura);
+            const minutes = getMinutesPassed(occ.data_abertura);
             const unread = unreadCounts[occ.id] || 0;
             let slaColor = 'var(--color-success)';
             let isSlaStopped = ['Resolvida', 'Cancelada', 'Retorno ao CD', 'Entrega Parcial', 'Canhoto retido', 'Reentregar Amanhã'].includes(occ.status);
-            
+
             if (!isSlaStopped) {
-              if (days >= 2) slaColor = 'var(--color-danger)';
-              else if (days >= 1) slaColor = 'var(--color-warning)';
+              if (minutes >= 60) slaColor = 'var(--color-danger)';
+              else if (minutes >= 30) slaColor = 'var(--color-warning)';
             } else {
-              slaColor = 'var(--color-border)'; 
+              slaColor = 'var(--color-border)';
             }
 
             return (
               <div key={occ.id} className="card p-3 card-hover bg-white border-0" style={{ cursor: 'pointer', position: 'relative', borderLeft: unread > 0 ? '4px solid var(--color-primary)' : '4px solid transparent', backgroundColor: unread > 0 ? 'var(--color-info-bg)' : 'white' }} onClick={() => loadOccurrenceDetails(occ)}>
                 {occ.status === 'Nova' && <div className="animate-pulse" style={{ position: 'absolute', top: 12, right: 12, width: 12, height: 12, borderRadius: '50%', backgroundColor: 'var(--color-danger)' }}></div>}
-                
+
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', backgroundColor: unread > 0 ? 'white' : 'var(--color-bg-main)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
                     {occ.placa}
                   </div>
                   {!isSlaStopped && (
                     <div className="d-flex align-items-center" style={{ gap: '0.25rem', color: slaColor, fontWeight: 700, fontSize: '0.875rem' }}>
-                      <Clock size={14} /> {days}d
+                      <Clock size={14} /> {minutes}m
                     </div>
                   )}
                 </div>
-                
+
                 <h5 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem 0', color: 'var(--color-primary-dark)' }}>{occ.tipo_ocorrencia}</h5>
                 <div className="text-secondary text-sm mb-3">
                   <span className="d-block text-truncate"><strong className="text-dark">Motorista:</strong> {occ.motorista}</span>
                   <span className="d-block text-truncate"><strong className="text-dark">Cliente:</strong> {occ.cliente}</span>
                   <span className="d-block text-truncate"><strong className="text-dark">Destino:</strong> {occ.endereco}, {occ.cidade}</span>
                 </div>
-                
+
                 <div className="d-flex justify-content-between align-items-center pt-3 mt-3" style={{ borderTop: '1px dashed var(--color-border)' }}>
                   <div className="text-muted text-xs">{formatTime(occ.data_abertura)} - {new Date(occ.data_abertura).toLocaleDateString()}</div>
                   <div className="d-flex" style={{ gap: '0.5rem' }}>
                     {unread > 0 && <div className="badge badge-primary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '24px', height: '24px', padding: 0 }}>{unread}</div>}
-                    <div className="badge" style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}><MessageCircle size={14}/></div>
-                    <div className="text-primary text-sm font-weight-bold d-flex align-items-center">Abrir <ChevronRight size={14}/></div>
+                    <div className="badge" style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}><MessageCircle size={14} /></div>
+                    <div className="text-primary text-sm font-weight-bold d-flex align-items-center">Abrir <ChevronRight size={14} /></div>
                   </div>
                 </div>
               </div>
@@ -363,10 +368,10 @@ const MonitorPanel: React.FC = () => {
           <div className="d-flex align-items-center" style={{ gap: '1.5rem' }}>
             <div className="form-control d-flex align-items-center bg-white border-0 position-relative" style={{ width: '350px', padding: '0', borderRadius: 'var(--radius-full)' }}>
               <Search size={18} className="text-muted position-absolute" style={{ left: '1rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-              <input 
-                type="text" 
-                placeholder="Buscar placa, manifesto ou NF..." 
-                style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.875rem', padding: '0.5rem 1rem 0.5rem 2.5rem', borderRadius: 'inherit' }} 
+              <input
+                type="text"
+                placeholder="Buscar placa, manifesto ou NF..."
+                style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.875rem', padding: '0.5rem 1rem 0.5rem 2.5rem', borderRadius: 'inherit' }}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -387,7 +392,7 @@ const MonitorPanel: React.FC = () => {
       <div style={{ position: 'fixed', top: 0, left: isSidebarOpen ? 0 : '-300px', width: '280px', height: '100%', backgroundColor: 'white', zIndex: 50, transition: 'left 0.3s ease', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)' }}>
         <div className="p-4 border-bottom d-flex justify-content-between align-items-center bg-light">
           <h4 className="m-0 font-weight-bold" style={{ color: 'var(--color-primary-dark)', fontSize: '1.1rem' }}>Menu Principal</h4>
-          <button className="btn p-1 bg-transparent border-0 text-secondary" onClick={() => setIsSidebarOpen(false)}><X size={24}/></button>
+          <button className="btn p-1 bg-transparent border-0 text-secondary" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button>
         </div>
         <div className="d-flex flex-column pt-2">
           <button className={`btn w-100 text-left px-4 py-4 border-0 rounded-0 d-flex align-items-center ${viewMode === 'operacao' ? 'bg-light text-primary font-weight-bold' : 'text-secondary bg-white'}`} style={{ gap: '0.75rem', borderRight: viewMode === 'operacao' ? '4px solid var(--color-primary)' : '4px solid transparent' }} onClick={() => { setViewMode('operacao'); setIsSidebarOpen(false); }}>
@@ -404,48 +409,48 @@ const MonitorPanel: React.FC = () => {
 
       <div className="d-flex flex-grow-1" style={{ overflow: 'hidden' }}>
         <div className="p-4 flex-grow-1" style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', alignItems: 'flex-start', backgroundColor: 'var(--color-bg-main)' }}>
-        {viewMode === 'operacao' ? (
-          <>
-            {renderKanbanColumn('Novas', ['Nova'])}
-            {renderKanbanColumn('Tratativa Operacional', ['Em Tratativa'])}
-            {renderKanbanColumn('Aguardando Retorno', ['Aguardando Cliente', 'Aguardando CS', 'Aguardando Motorista', 'Aguardando Armazém', 'Pendência Documental'])}
-            {renderKanbanColumn('Escaladas', ['Escalada'])}
-          </>
-        ) : viewMode === 'finalizadas' ? (
-          <>
-            {renderKanbanColumn('Entregas Realizadas', ['Resolvida', 'Entrega Parcial'])}
-            {renderKanbanColumn('Devoluções e Cancelamentos', ['Cancelada', 'Retorno ao CD'])}
-            {renderKanbanColumn('Reentregas Agendadas', ['Reentregar Amanhã'])}
-          </>
-        ) : (
-          <>
-            <div style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
-              <div className="mb-3 d-flex justify-content-between align-items-center bg-white p-3 rounded" style={{ boxShadow: 'var(--shadow-sm)', borderTop: `4px solid var(--color-primary)` }}>
-                <h4 style={{ fontSize: '1rem', margin: 0, fontWeight: 600, color: 'var(--color-primary-dark)' }}>Controle de Canhotos Retidos</h4>
-                <span className="badge badge-primary">{occurrences.filter(o => o.status === 'Canhoto retido').length}</span>
-              </div>
-              <div className="d-flex flex-wrap" style={{ gap: '1rem' }}>
-                {occurrences.filter(o => o.status === 'Canhoto retido').map(occ => (
-                  <div key={occ.id} className="card p-3 bg-white border-0" style={{ minWidth: '300px', cursor: 'pointer' }} onClick={() => loadOccurrenceDetails(occ)}>
-                    <div className="d-flex justify-content-between mb-2">
-                      <span className="badge badge-info">{occ.placa}</span>
-                      <span className="text-danger font-weight-bold">{getDaysPassed(occ.data_abertura)} dias retido</span>
+          {viewMode === 'operacao' ? (
+            <>
+              {renderKanbanColumn('Novas', ['Nova'])}
+              {renderKanbanColumn('Tratativa Operacional', ['Em Tratativa'])}
+              {renderKanbanColumn('Aguardando Retorno', ['Aguardando Cliente', 'Aguardando CS', 'Aguardando Motorista', 'Aguardando Armazém', 'Pendência Documental'])}
+              {renderKanbanColumn('Escaladas', ['Escalada'])}
+            </>
+          ) : viewMode === 'finalizadas' ? (
+            <>
+              {renderKanbanColumn('Entregas Realizadas', ['Resolvida', 'Entrega Parcial'])}
+              {renderKanbanColumn('Devoluções e Cancelamentos', ['Cancelada', 'Retorno ao CD'])}
+              {renderKanbanColumn('Reentregas Agendadas', ['Reentregar Amanhã'])}
+            </>
+          ) : (
+            <>
+              <div style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
+                <div className="mb-3 d-flex justify-content-between align-items-center bg-white p-3 rounded" style={{ boxShadow: 'var(--shadow-sm)', borderTop: `4px solid var(--color-primary)` }}>
+                  <h4 style={{ fontSize: '1rem', margin: 0, fontWeight: 600, color: 'var(--color-primary-dark)' }}>Controle de Canhotos Retidos</h4>
+                  <span className="badge badge-primary">{occurrences.filter(o => o.status === 'Canhoto retido').length}</span>
+                </div>
+                <div className="d-flex flex-wrap" style={{ gap: '1rem' }}>
+                  {occurrences.filter(o => o.status === 'Canhoto retido').map(occ => (
+                    <div key={occ.id} className="card p-3 bg-white border-0" style={{ minWidth: '300px', cursor: 'pointer' }} onClick={() => loadOccurrenceDetails(occ)}>
+                      <div className="d-flex justify-content-between mb-2">
+                        <span className="badge badge-info">{occ.placa}</span>
+                        <span className="text-danger font-weight-bold">{getDaysPassed(occ.data_abertura)} dias retido</span>
+                      </div>
+                      <div className="font-weight-bold">{occ.cliente}</div>
+                      <div className="text-sm text-secondary">NF: {occ.nf}</div>
                     </div>
-                    <div className="font-weight-bold">{occ.cliente}</div>
-                    <div className="text-sm text-secondary">NF: {occ.nf}</div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
         </div>
       </div>
 
       {activeOccurrence && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10, 45, 74, 0.5)', zIndex: 100, display: 'flex', justifyContent: 'flex-end' }}>
           <div className="animate-slide-up" style={{ width: '1000px', maxWidth: '90%', backgroundColor: 'var(--color-bg-main)', height: '100%', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-float)' }}>
-            
+
             <div className="d-flex justify-content-between align-items-center p-4 border-bottom bg-white">
               <div>
                 <h2 style={{ color: 'var(--color-primary-dark)', margin: '0 0 0.25rem 0' }}>Tratativa: {activeOccurrence.tipo_ocorrencia}</h2>
@@ -466,7 +471,7 @@ const MonitorPanel: React.FC = () => {
                   <div className="mb-2"><strong className="text-dark">NF(s):</strong> {activeOccurrence.nf || 'Manifesto Geral'}</div>
                   <div className="mb-2"><strong className="text-dark">Cliente:</strong> {activeOccurrence.cliente}</div>
                   <div className="mb-2"><strong className="text-dark">Destino:</strong> {activeOccurrence.endereco}, {activeOccurrence.cidade}</div>
-                  
+
                   {activeOccurrence.latitude && activeOccurrence.longitude && (
                     <div className="mb-3 d-flex align-items-center gap-2">
                       <MapPin size={16} className="text-danger" />
@@ -475,7 +480,7 @@ const MonitorPanel: React.FC = () => {
                       </a>
                     </div>
                   )}
-                  
+
                   <div className="mt-3"><strong className="text-dark">Relato Operacional:</strong></div>
                   <div className="p-3 bg-white border rounded text-sm mt-1 mb-3">{activeOccurrence.descricao}</div>
 
@@ -551,21 +556,21 @@ const MonitorPanel: React.FC = () => {
                       })}
                       <div ref={chatEndRef} />
                     </div>
-                    
+
                     {chatPhoto && (
                       <div className="p-2 bg-light border-top d-flex align-items-center justify-content-between">
                         <div className="d-flex align-items-center gap-2">
-                          <ImageIcon size={18} className="text-primary"/>
+                          <ImageIcon size={18} className="text-primary" />
                           <span className="text-sm font-weight-bold text-primary text-truncate" style={{ maxWidth: '200px' }}>{chatPhoto.name}</span>
                         </div>
-                        <button type="button" className="btn p-1 text-danger border-0 bg-transparent" onClick={() => setChatPhoto(null)}><X size={18}/></button>
+                        <button type="button" className="btn p-1 text-danger border-0 bg-transparent" onClick={() => setChatPhoto(null)}><X size={18} /></button>
                       </div>
                     )}
 
                     <form onSubmit={sendMessage} className="p-2 d-flex align-items-center bg-white" style={{ gap: '0.5rem' }}>
                       <input type="file" accept="image/*" style={{ display: 'none' }} ref={chatFileInputRef} onChange={e => { if (e.target.files && e.target.files[0]) setChatPhoto(e.target.files[0]) }} />
-                      <button type="button" className="btn p-2 text-secondary bg-transparent border-0" onClick={() => chatFileInputRef.current?.click()}><ImageIcon size={24}/></button>
-                      
+                      <button type="button" className="btn p-2 text-secondary bg-transparent border-0" onClick={() => chatFileInputRef.current?.click()}><ImageIcon size={24} /></button>
+
                       <input type="text" className="form-control" value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Responder motorista..." style={{ borderRadius: 'var(--radius-full)' }} />
                       <button type="submit" className="btn btn-primary rounded-circle p-0" style={{ minWidth: '44px', height: '44px' }} disabled={isUploading || (!newMessage.trim() && !chatPhoto)}>
                         <Send size={18} style={{ marginLeft: '2px' }} />
