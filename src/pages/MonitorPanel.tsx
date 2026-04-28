@@ -51,8 +51,9 @@ const MonitorPanel: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<'detalhes' | 'chat' | 'historico'>('detalhes');
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-  const [viewMode, setViewMode] = useState<'operacao' | 'finalizadas'>('operacao');
+  const [viewMode, setViewMode] = useState<'operacao' | 'finalizadas' | 'canhotos'>('operacao');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [chatPhoto, setChatPhoto] = useState<File | null>(null);
@@ -251,7 +252,7 @@ const MonitorPanel: React.FC = () => {
        responsavel: 'Central Operacional'
     }]);
 
-    if (['Resolvida', 'Entrega Parcial', 'Retorno ao CD', 'Cancelada'].includes(status)) {
+    if (['Resolvida', 'Entrega Parcial', 'Retorno ao CD', 'Cancelada', 'Canhoto retido', 'Reentregar Amanhã'].includes(status)) {
       setActiveOccurrence(null);
       fetchOccurrences();
       return;
@@ -265,9 +266,9 @@ const MonitorPanel: React.FC = () => {
     setHistoryItems(resHist.data || []);
   };
 
-  const getMinutesPassed = (dateString: string) => {
+  const getDaysPassed = (dateString: string) => {
     const diff = new Date().getTime() - new Date(dateString).getTime();
-    return Math.floor(diff / 60000);
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
   };
 
   const formatTime = (isoString: string) => {
@@ -276,7 +277,16 @@ const MonitorPanel: React.FC = () => {
   };
 
   const renderKanbanColumn = (title: string, statuses: string[]) => {
-    const columnOccurrences = occurrences.filter(o => statuses.includes(o.status));
+    const filteredBySearch = occurrences.filter(occ => {
+      const q = searchQuery.toLowerCase();
+      return (
+        occ.placa.toLowerCase().includes(q) ||
+        occ.manifesto.toLowerCase().includes(q) ||
+        (occ.nf && occ.nf.toLowerCase().includes(q)) ||
+        occ.cliente.toLowerCase().includes(q)
+      );
+    });
+    const columnOccurrences = filteredBySearch.filter(o => statuses.includes(o.status));
     
     return (
       <div style={{ flex: '1', minWidth: '320px', maxWidth: '380px', display: 'flex', flexDirection: 'column' }}>
@@ -287,14 +297,14 @@ const MonitorPanel: React.FC = () => {
         
         <div className="d-flex flex-column" style={{ gap: '1rem', overflowY: 'auto', height: 'calc(100vh - 160px)', paddingRight: '0.5rem' }}>
           {columnOccurrences.map(occ => {
-            const minutes = getMinutesPassed(occ.data_abertura);
+            const days = getDaysPassed(occ.data_abertura);
             const unread = unreadCounts[occ.id] || 0;
             let slaColor = 'var(--color-success)';
-            let isSlaStopped = ['Resolvida', 'Cancelada', 'Retorno ao CD', 'Entrega Parcial'].includes(occ.status);
+            let isSlaStopped = ['Resolvida', 'Cancelada', 'Retorno ao CD', 'Entrega Parcial', 'Canhoto retido', 'Reentregar Amanhã'].includes(occ.status);
             
             if (!isSlaStopped) {
-              if (minutes >= 60) slaColor = 'var(--color-danger)';
-              else if (minutes >= 30) slaColor = 'var(--color-warning)';
+              if (days >= 2) slaColor = 'var(--color-danger)';
+              else if (days >= 1) slaColor = 'var(--color-warning)';
             } else {
               slaColor = 'var(--color-border)'; 
             }
@@ -309,7 +319,7 @@ const MonitorPanel: React.FC = () => {
                   </div>
                   {!isSlaStopped && (
                     <div className="d-flex align-items-center" style={{ gap: '0.25rem', color: slaColor, fontWeight: 700, fontSize: '0.875rem' }}>
-                      <Clock size={14} /> {minutes}m
+                      <Clock size={14} /> {days}d
                     </div>
                   )}
                 </div>
@@ -342,18 +352,24 @@ const MonitorPanel: React.FC = () => {
       <header style={{ backgroundColor: 'var(--color-primary-dark)', color: 'white', padding: '1rem 1.5rem', boxShadow: 'var(--shadow-md)', zIndex: 10 }}>
         <div className="d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center" style={{ gap: '0.75rem' }}>
-            <button className="bg-transparent border-0 p-0 mr-2" style={{ color: 'white', boxShadow: 'none', cursor: 'pointer' }} onClick={() => setIsSidebarOpen(true)}>
+            <button className="border-0 p-0 mr-2" style={{ color: 'white', boxShadow: 'none', cursor: 'pointer', background: 'transparent', backgroundColor: 'transparent', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitAppearance: 'none', appearance: 'none' }} onClick={() => setIsSidebarOpen(true)}>
               <Menu size={28} />
             </button>
             <div>
-              <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>CTOE | Central de Controle</h1>
+              <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>CTOE | Central de Tratativas</h1>
               <div className="text-xs" style={{ color: 'var(--color-primary-pale)' }}>Monitoramento</div>
             </div>
           </div>
           <div className="d-flex align-items-center" style={{ gap: '1.5rem' }}>
             <div className="form-control d-flex align-items-center bg-white border-0 position-relative" style={{ width: '350px', padding: '0', borderRadius: 'var(--radius-full)' }}>
               <Search size={18} className="text-muted position-absolute" style={{ left: '1rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-              <input type="text" placeholder="Buscar placa, manifesto ou NF..." style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.875rem', padding: '0.5rem 1rem 0.5rem 2.5rem', borderRadius: 'inherit' }} />
+              <input 
+                type="text" 
+                placeholder="Buscar placa, manifesto ou NF..." 
+                style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.875rem', padding: '0.5rem 1rem 0.5rem 2.5rem', borderRadius: 'inherit' }} 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyItems: 'center', fontWeight: 'bold', border: '2px solid var(--color-primary-pale)' }}>
               <span style={{ margin: 'auto' }}>CO</span>
@@ -380,6 +396,9 @@ const MonitorPanel: React.FC = () => {
           <button className={`btn w-100 text-left px-4 py-4 border-0 rounded-0 d-flex align-items-center ${viewMode === 'finalizadas' ? 'bg-light text-primary font-weight-bold' : 'text-secondary bg-white'}`} style={{ gap: '0.75rem', borderRight: viewMode === 'finalizadas' ? '4px solid var(--color-primary)' : '4px solid transparent' }} onClick={() => { setViewMode('finalizadas'); setIsSidebarOpen(false); }}>
             <Archive size={20} /> Histórico Finalizadas
           </button>
+          <button className={`btn w-100 text-left px-4 py-4 border-0 rounded-0 d-flex align-items-center ${viewMode === 'canhotos' ? 'bg-light text-primary font-weight-bold' : 'text-secondary bg-white'}`} style={{ gap: '0.75rem', borderRight: viewMode === 'canhotos' ? '4px solid var(--color-primary)' : '4px solid transparent' }} onClick={() => { setViewMode('canhotos'); setIsSidebarOpen(false); }}>
+            <FileText size={20} /> Canhotos Retidos
+          </button>
         </div>
       </div>
 
@@ -392,10 +411,32 @@ const MonitorPanel: React.FC = () => {
             {renderKanbanColumn('Aguardando Retorno', ['Aguardando Cliente', 'Aguardando CS', 'Aguardando Motorista', 'Aguardando Armazém', 'Pendência Documental'])}
             {renderKanbanColumn('Escaladas', ['Escalada'])}
           </>
-        ) : (
+        ) : viewMode === 'finalizadas' ? (
           <>
             {renderKanbanColumn('Entregas Realizadas', ['Resolvida', 'Entrega Parcial'])}
             {renderKanbanColumn('Devoluções e Cancelamentos', ['Cancelada', 'Retorno ao CD'])}
+            {renderKanbanColumn('Reentregas Agendadas', ['Reentregar Amanhã'])}
+          </>
+        ) : (
+          <>
+            <div style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
+              <div className="mb-3 d-flex justify-content-between align-items-center bg-white p-3 rounded" style={{ boxShadow: 'var(--shadow-sm)', borderTop: `4px solid var(--color-primary)` }}>
+                <h4 style={{ fontSize: '1rem', margin: 0, fontWeight: 600, color: 'var(--color-primary-dark)' }}>Controle de Canhotos Retidos</h4>
+                <span className="badge badge-primary">{occurrences.filter(o => o.status === 'Canhoto retido').length}</span>
+              </div>
+              <div className="d-flex flex-wrap" style={{ gap: '1rem' }}>
+                {occurrences.filter(o => o.status === 'Canhoto retido').map(occ => (
+                  <div key={occ.id} className="card p-3 bg-white border-0" style={{ minWidth: '300px', cursor: 'pointer' }} onClick={() => loadOccurrenceDetails(occ)}>
+                    <div className="d-flex justify-content-between mb-2">
+                      <span className="badge badge-info">{occ.placa}</span>
+                      <span className="text-danger font-weight-bold">{getDaysPassed(occ.data_abertura)} dias retido</span>
+                    </div>
+                    <div className="font-weight-bold">{occ.cliente}</div>
+                    <div className="text-sm text-secondary">NF: {occ.nf}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </>
         )}
         </div>
@@ -467,6 +508,8 @@ const MonitorPanel: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <button className="btn btn-success justify-content-center" onClick={() => updateStatus('Entrega Parcial', 'Finalizado - Parcial')}><CheckCircle size={16} /> Entrega Parcial</button>
                   <button className="btn btn-success justify-content-center" onClick={() => updateStatus('Resolvida', 'Finalizado com Sucesso')}><CheckCircle size={16} /> Entrega Realizada</button>
+                  <button className="btn btn-warning justify-content-center" onClick={() => updateStatus('Canhoto retido', 'Canhoto Retido')}><FileText size={16} /> Canhoto retido</button>
+                  <button className="btn btn-info justify-content-center" onClick={() => updateStatus('Reentregar Amanhã', 'Reentrega Agendada')}><RefreshCw size={16} /> Reentregar Amanhã</button>
                   <button className="btn btn-danger justify-content-center" onClick={() => updateStatus('Retorno ao CD', 'Finalizado - Retorno')}><CornerUpRight size={16} /> Retorno ao CD</button>
                   <button className="btn btn-danger justify-content-center" onClick={() => updateStatus('Cancelada', 'Cancelamento')}><XCircle size={16} /> Cancelar Ocorrência</button>
                 </div>
