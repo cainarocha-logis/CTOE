@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { CheckCircle, Navigation, MessageCircle, Search, X, Send, Clock, AlertTriangle, FileText, ChevronRight, CornerUpRight, RefreshCw, XCircle, MapPin, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle, Navigation, MessageCircle, Search, X, Send, Clock, AlertTriangle, FileText, ChevronRight, CornerUpRight, RefreshCw, XCircle, MapPin, Image as ImageIcon, Kanban, Archive } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Occurrence {
@@ -179,7 +179,7 @@ const MonitorPanel: React.FC = () => {
 
   const loadOccurrenceDetails = async (occ: Occurrence) => {
     setActiveOccurrence(occ);
-    setActiveTab('detalhes');
+    setActiveTab('chat');
     
     const resChat = await supabase.from('occurrence_messages').select('*').eq('occurrence_id', occ.id).order('created_at', { ascending: true });
     setChatMessages(resChat.data || []);
@@ -249,6 +249,12 @@ const MonitorPanel: React.FC = () => {
        status_novo: status,
        responsavel: 'Central Operacional'
     }]);
+
+    if (['Resolvida', 'Entrega Parcial', 'Retorno ao CD', 'Cancelada'].includes(status)) {
+      setActiveOccurrence(null);
+      fetchOccurrences();
+      return;
+    }
     
     const { data } = await supabase.from('occurrences').select('*').eq('id', activeOccurrence.id).single();
     if (data) setActiveOccurrence(data);
@@ -340,7 +346,7 @@ const MonitorPanel: React.FC = () => {
             </div>
             <div>
               <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>CTOE | Central de Controle</h1>
-              <div className="text-xs" style={{ color: 'var(--color-primary-pale)' }}>Monitoramento Logístico Avançado</div>
+              <div className="text-xs" style={{ color: 'var(--color-primary-pale)' }}>Monitoramento</div>
             </div>
           </div>
           <div className="d-flex align-items-center" style={{ gap: '1.5rem' }}>
@@ -355,24 +361,17 @@ const MonitorPanel: React.FC = () => {
         </div>
       </header>
 
-      <div className="bg-white border-bottom px-4 pt-3 d-flex" style={{ gap: '2rem' }}>
-        <button 
-          className={`btn border-0 rounded-0 pb-3 ${viewMode === 'operacao' ? 'border-bottom border-primary text-primary font-weight-bold' : 'text-secondary'}`} 
-          style={{ borderBottomWidth: '3px' }} 
-          onClick={() => setViewMode('operacao')}
-        >
-          Painel Operacional
-        </button>
-        <button 
-          className={`btn border-0 rounded-0 pb-3 ${viewMode === 'finalizadas' ? 'border-bottom border-primary text-primary font-weight-bold' : 'text-secondary'}`} 
-          style={{ borderBottomWidth: '3px' }} 
-          onClick={() => setViewMode('finalizadas')}
-        >
-          Histórico de Finalizadas
-        </button>
-      </div>
+      <div className="d-flex flex-grow-1" style={{ overflow: 'hidden' }}>
+        <div style={{ width: '250px', backgroundColor: 'white', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
+          <button className={`btn w-100 text-left px-4 py-4 border-0 rounded-0 d-flex align-items-center ${viewMode === 'operacao' ? 'bg-light text-primary font-weight-bold' : 'text-secondary bg-white'}`} style={{ gap: '0.75rem', borderRight: viewMode === 'operacao' ? '4px solid var(--color-primary)' : '4px solid transparent' }} onClick={() => setViewMode('operacao')}>
+            <Kanban size={20} /> Painel Operacional
+          </button>
+          <button className={`btn w-100 text-left px-4 py-4 border-0 rounded-0 d-flex align-items-center ${viewMode === 'finalizadas' ? 'bg-light text-primary font-weight-bold' : 'text-secondary bg-white'}`} style={{ gap: '0.75rem', borderRight: viewMode === 'finalizadas' ? '4px solid var(--color-primary)' : '4px solid transparent' }} onClick={() => setViewMode('finalizadas')}>
+            <Archive size={20} /> Histórico Finalizadas
+          </button>
+        </div>
 
-      <div className="p-4" style={{ flexGrow: 1, display: 'flex', gap: '1.5rem', overflowX: 'auto', alignItems: 'flex-start' }}>
+        <div className="p-4 flex-grow-1" style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', alignItems: 'flex-start', backgroundColor: 'var(--color-bg-main)' }}>
         {viewMode === 'operacao' ? (
           <>
             {renderKanbanColumn('Novas', ['Nova'])}
@@ -386,6 +385,7 @@ const MonitorPanel: React.FC = () => {
             {renderKanbanColumn('Devoluções e Cancelamentos', ['Cancelada', 'Retorno ao CD'])}
           </>
         )}
+        </div>
       </div>
 
       {activeOccurrence && (
