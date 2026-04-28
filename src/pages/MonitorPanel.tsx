@@ -51,6 +51,7 @@ const MonitorPanel: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<'detalhes' | 'chat' | 'historico'>('detalhes');
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [viewMode, setViewMode] = useState<'operacao' | 'finalizadas'>('operacao');
   
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [chatPhoto, setChatPhoto] = useState<File | null>(null);
@@ -354,12 +355,37 @@ const MonitorPanel: React.FC = () => {
         </div>
       </header>
 
+      <div className="bg-white border-bottom px-4 pt-3 d-flex" style={{ gap: '2rem' }}>
+        <button 
+          className={`btn border-0 rounded-0 pb-3 ${viewMode === 'operacao' ? 'border-bottom border-primary text-primary font-weight-bold' : 'text-secondary'}`} 
+          style={{ borderBottomWidth: '3px' }} 
+          onClick={() => setViewMode('operacao')}
+        >
+          Painel Operacional
+        </button>
+        <button 
+          className={`btn border-0 rounded-0 pb-3 ${viewMode === 'finalizadas' ? 'border-bottom border-primary text-primary font-weight-bold' : 'text-secondary'}`} 
+          style={{ borderBottomWidth: '3px' }} 
+          onClick={() => setViewMode('finalizadas')}
+        >
+          Histórico de Finalizadas
+        </button>
+      </div>
+
       <div className="p-4" style={{ flexGrow: 1, display: 'flex', gap: '1.5rem', overflowX: 'auto', alignItems: 'flex-start' }}>
-        {renderKanbanColumn('Novas', ['Nova'])}
-        {renderKanbanColumn('Tratativa Operacional', ['Em Tratativa'])}
-        {renderKanbanColumn('Aguardando Retorno', ['Aguardando Cliente', 'Aguardando CS', 'Aguardando Motorista', 'Aguardando Armazém', 'Pendência Documental'])}
-        {renderKanbanColumn('Escaladas', ['Escalada'])}
-        {renderKanbanColumn('Finalizadas', ['Resolvida', 'Cancelada', 'Retorno ao CD', 'Entrega Parcial'])}
+        {viewMode === 'operacao' ? (
+          <>
+            {renderKanbanColumn('Novas', ['Nova'])}
+            {renderKanbanColumn('Tratativa Operacional', ['Em Tratativa'])}
+            {renderKanbanColumn('Aguardando Retorno', ['Aguardando Cliente', 'Aguardando CS', 'Aguardando Motorista', 'Aguardando Armazém', 'Pendência Documental'])}
+            {renderKanbanColumn('Escaladas', ['Escalada'])}
+          </>
+        ) : (
+          <>
+            {renderKanbanColumn('Entregas Realizadas', ['Resolvida', 'Entrega Parcial'])}
+            {renderKanbanColumn('Devoluções e Cancelamentos', ['Cancelada', 'Retorno ao CD'])}
+          </>
+        )}
       </div>
 
       {activeOccurrence && (

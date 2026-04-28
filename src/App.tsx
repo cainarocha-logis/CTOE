@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import DriverApp from './pages/DriverApp';
 import MonitorPanel from './pages/MonitorPanel';
 import ManagerDashboard from './pages/ManagerDashboard';
