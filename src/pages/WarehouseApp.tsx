@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Package, Truck, Camera, CheckCircle, AlertCircle, ArrowRight,
-  ShieldCheck, Thermometer, Image as ImageIcon, AlertTriangle, Scale,
+  Package, Truck, Camera, CheckCircle, ArrowRight,
+  Thermometer, Image as ImageIcon, AlertTriangle, Scale,
   RefreshCw, ClipboardList, RotateCcw
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
