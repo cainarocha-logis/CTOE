@@ -4,6 +4,7 @@ import MonitorPanel from './pages/MonitorPanel';
 import ManagerDashboard from './pages/ManagerDashboard';
 import Login from './pages/Login';
 import AdminPanel from './pages/AdminPanel';
+import WarehouseApp from './pages/WarehouseApp';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/monitor/*" element={<MonitorPanel />} />
         <Route path="/dashboard/*" element={<ManagerDashboard />} />
         <Route path="/admin/*" element={<AdminPanel />} />
+        <Route path="/armazem/*" element={<WarehouseApp />} />
       </Routes>
     </Router>
   );
