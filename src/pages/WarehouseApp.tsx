@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Package, Truck, Camera, CheckCircle, AlertCircle, ArrowRight, ShieldCheck, Thermometer, Image as ImageIcon, X } from 'lucide-react';
+import { Package, Truck, Camera, CheckCircle, AlertCircle, ArrowRight, ShieldCheck, Thermometer, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Delivery {
