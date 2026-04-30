@@ -5,6 +5,7 @@ import ManagerDashboard from './pages/ManagerDashboard';
 import Login from './pages/Login';
 import AdminPanel from './pages/AdminPanel';
 import WarehouseApp from './pages/WarehouseApp';
+import GateApp from './pages/GateApp';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/dashboard/*" element={<ManagerDashboard />} />
         <Route path="/admin/*" element={<AdminPanel />} />
         <Route path="/armazem/*" element={<WarehouseApp />} />
+        <Route path="/portaria/*" element={<GateApp />} />
       </Routes>
     </Router>
   );

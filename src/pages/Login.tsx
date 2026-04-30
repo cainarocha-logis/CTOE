@@ -24,6 +24,9 @@ const Login: React.FC = () => {
           <button className="btn btn-secondary" onClick={() => navigate('/armazem')}>
             Módulo Armazém (Expedição)
           </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/portaria')}>
+            Módulo Portaria (Balança)
+          </button>
           <button className="btn btn-outline" onClick={() => handleLogin('monitor')}>
             Painel do Monitor
           </button>
