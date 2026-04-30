@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Package, Truck, Camera, CheckCircle, AlertCircle, ArrowRight,
-  ShieldCheck, Thermometer, Image as ImageIcon, AlertTriangle, Scale
+  ShieldCheck, Thermometer, Image as ImageIcon, AlertTriangle, Scale,
+  RefreshCw, ClipboardList, RotateCcw
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -26,12 +27,25 @@ interface NfResult {
   pesoFaltaKg: number;
 }
 
+interface ManifestoCard {
+  placa: string;
+  manifesto: string;
+  motorista: string;
+  filial: string;
+  total_nfs: number;
+  status: 'Pendente' | 'Revisão Armazém';
+}
+
 const WarehouseApp: React.FC = () => {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // 0 = fila, 1 removido, 2 = conferencia, 3 = fotos
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 1: Auth
+  // Step 0: Queue
+  const [queue, setQueue] = useState<ManifestoCard[]>([]);
+  const [queueLoading, setQueueLoading] = useState(false);
+
+  // Selected manifesto (replaces auth)
   const [authPlaca, setAuthPlaca] = useState('');
   const [authManifesto, setAuthManifesto] = useState('');
   const [manifestoDeliveries, setManifestoDeliveries] = useState<Delivery[]>([]);
@@ -58,36 +72,75 @@ const WarehouseApp: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activePhotoType, setActivePhotoType] = useState<string | null>(null);
 
+  /* ---------- FILA DE CARREGAMENTO ---------- */
+  const fetchQueue = async () => {
+    setQueueLoading(true);
+    const { data } = await supabase
+      .from('deliveries')
+      .select('placa, manifesto, motorista, filial, status_conferencia, status_entrega')
+      .or('status_conferencia.eq.Pendente,status_entrega.eq.Revisão Armazém');
+
+    if (data) {
+      // Agrupa por placa+manifesto
+      const map: Record<string, ManifestoCard> = {};
+      data.forEach(d => {
+        const key = `${d.placa}_${d.manifesto}`;
+        if (!map[key]) {
+          const isRevisao = d.status_entrega === 'Revisão Armazém';
+          map[key] = { placa: d.placa, manifesto: d.manifesto, motorista: d.motorista, filial: d.filial, total_nfs: 0, status: isRevisao ? 'Revisão Armazém' : 'Pendente' };
+        }
+        map[key].total_nfs += 1;
+        // Se qualquer NF está em revisão, o card é revisão
+        if (d.status_entrega === 'Revisão Armazém') map[key].status = 'Revisão Armazém';
+      });
+      setQueue(Object.values(map));
+    }
+    setQueueLoading(false);
+  };
+
+  useEffect(() => { fetchQueue(); }, []);
+
+  // Realtime: atualiza fila quando portaria devolve card
+  useEffect(() => {
+    const sub = supabase.channel('warehouse_queue')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deliveries' }, fetchQueue)
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, []);
+
   const resetState = () => {
-    setStep(1); setAuthPlaca(''); setAuthManifesto('');
+    setStep(0); setAuthPlaca(''); setAuthManifesto('');
     setManifestoDeliveries([]); setCurrentNfIndex(0);
     setCountingValue(''); setErrorCount(0);
     setShowShortageForm(false); setShortageQtd(''); setShortagePeso('');
     setNfResults([]);
     setPhotos({ mercadoria: null, termometro: null, caminhao: null });
     setError(null);
+    fetchQueue();
   };
 
-  /* ---------- PASSO 1: AUTENTICAÇÃO ---------- */
-  const handleStartConference = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /* ---------- SELECIONAR MANIFESTO DA FILA ---------- */
+  const selectManifesto = async (card: ManifestoCard) => {
     setLoading(true);
     setError(null);
-
-    const { data, error: dbError } = await supabase
+    const statusFilter = card.status === 'Revisão Armazém' ? 'Revisão Armazém' : 'Pendente';
+    const query = supabase
       .from('deliveries')
       .select('id, nf, cliente, placa, manifesto, motorista, filial, qtd_caixas, peso_kg')
-      .eq('placa', authPlaca.toUpperCase())
-      .eq('manifesto', authManifesto)
-      .eq('status_conferencia', 'Pendente');
+      .eq('placa', card.placa)
+      .eq('manifesto', card.manifesto);
 
-    if (dbError) {
-      setError('Erro ao consultar banco de dados: ' + dbError.message);
-    } else if (!data || data.length === 0) {
-      setError('Manifesto ou placa não encontrados, ou carga já conferida.');
-    } else {
+    const { data } = card.status === 'Revisão Armazém'
+      ? await query.eq('status_entrega', statusFilter)
+      : await query.eq('status_conferencia', 'Pendente');
+
+    if (data && data.length > 0) {
+      setAuthPlaca(card.placa);
+      setAuthManifesto(card.manifesto);
       setManifestoDeliveries(data);
       setStep(2);
+    } else {
+      alert('NFs não encontradas para este manifesto.');
     }
     setLoading(false);
   };
@@ -260,35 +313,91 @@ const WarehouseApp: React.FC = () => {
         </div>
       </div>
 
-      {/* ===== PASSO 1: LOGIN ===== */}
-      {step === 1 && (
-        <div className="card p-4 border-0 animate-slide-up" style={{ borderRadius: '16px', boxShadow: '0 4px 16px rgba(15,59,99,0.1)' }}>
-          <h3 className="mb-4 d-flex align-items-center" style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1E293B', gap: '0.5rem' }}>
-            <ShieldCheck size={20} color="#0F3B63" /> Iniciar Nova Conferência
-          </h3>
-          <form onSubmit={handleStartConference}>
-            <div className="form-group mb-3">
-              <label className="form-label">Placa do Veículo</label>
-              <input type="text" className="form-control" placeholder="ABC1234" value={authPlaca}
-                onChange={e => setAuthPlaca(e.target.value.toUpperCase())} required
-                style={{ textTransform: 'uppercase', padding: '0.75rem', fontSize: '1.1rem', fontWeight: 600 }} />
-            </div>
-            <div className="form-group mb-4">
-              <label className="form-label">Número do Manifesto</label>
-              <input type="text" className="form-control" placeholder="000000" value={authManifesto}
-                onChange={e => setAuthManifesto(e.target.value)} required
-                style={{ padding: '0.75rem', fontSize: '1.1rem', fontWeight: 600 }} />
-            </div>
-            {error && (
-              <div className="d-flex align-items-center p-3 mb-4" style={{ gap: '0.5rem', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FEE2E2', color: '#991B1B', fontSize: '0.9rem' }}>
-                <AlertCircle size={18} /> {error}
-              </div>
-            )}
-            <button type="submit" className="btn btn-primary w-100" disabled={loading}
-              style={{ padding: '0.875rem', borderRadius: '12px', fontSize: '1rem', fontWeight: 600 }}>
-              {loading ? 'Validando...' : 'Iniciar Conferência'}
+      {/* ===== PASSO 0: FILA DE CARREGAMENTO ===== */}
+      {step === 0 && (
+        <div className="animate-slide-up">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h3 style={{ margin: 0, fontWeight: 700, color: '#1E293B', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ClipboardList size={20} color="#0F3B63" /> Fila de Carregamento
+            </h3>
+            <button onClick={fetchQueue} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
+              <RefreshCw size={16} /> Atualizar
             </button>
-          </form>
+          </div>
+
+          {queueLoading && (
+            <div className="text-center p-5 text-muted">Carregando fila...</div>
+          )}
+
+          {!queueLoading && queue.length === 0 && (
+            <div className="card p-5 border-0 text-center" style={{ borderRadius: '16px' }}>
+              <Truck size={48} color="#CBD5E1" style={{ margin: '0 auto 1rem' }} />
+              <p style={{ color: '#94A3B8', margin: 0, fontWeight: 600 }}>Nenhuma carga pendente no momento.</p>
+              <p style={{ color: '#CBD5E1', fontSize: '0.8rem', marginTop: '0.25rem' }}>Aguardando dados da automação.</p>
+            </div>
+          )}
+
+          {/* Coluna: Pendente */}
+          {queue.filter(c => c.status === 'Pendente').length > 0 && (
+            <div className="mb-4">
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                📦 Aguardando Conferência ({queue.filter(c => c.status === 'Pendente').length})
+              </div>
+              <div className="d-flex flex-column" style={{ gap: '0.75rem' }}>
+                {queue.filter(c => c.status === 'Pendente').map(card => (
+                  <div key={`${card.placa}_${card.manifesto}`}
+                    className="card border-0 card-hover"
+                    style={{ borderRadius: '14px', boxShadow: '0 2px 8px rgba(15,59,99,0.1)', cursor: 'pointer', borderLeft: '4px solid #0F3B63' }}
+                    onClick={() => selectManifesto(card)}>
+                    <div className="p-3 d-flex justify-content-between align-items-center">
+                      <div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F3B63', letterSpacing: '2px' }}>{card.placa}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>Man: {card.manifesto} · {card.motorista}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>Filial: {card.filial}</div>
+                      </div>
+                      <div className="text-right">
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F3B63' }}>{card.total_nfs}</div>
+                        <div style={{ fontSize: '0.7rem', color: '#94A3B8' }}>NFs</div>
+                        <div style={{ marginTop: '0.5rem', padding: '0.2rem 0.6rem', borderRadius: '20px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontSize: '0.75rem', fontWeight: 600 }}>Pendente</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Coluna: Revisão Armazém (devolvidos pela portaria) */}
+          {queue.filter(c => c.status === 'Revisão Armazém').length > 0 && (
+            <div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#DC2626', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                🔁 Devolvidos pela Portaria — Revisão ({queue.filter(c => c.status === 'Revisão Armazém').length})
+              </div>
+              <div className="d-flex flex-column" style={{ gap: '0.75rem' }}>
+                {queue.filter(c => c.status === 'Revisão Armazém').map(card => (
+                  <div key={`${card.placa}_${card.manifesto}_rev`}
+                    className="card border-0 card-hover"
+                    style={{ borderRadius: '14px', boxShadow: '0 2px 8px rgba(220,38,38,0.1)', cursor: 'pointer', borderLeft: '4px solid #DC2626' }}
+                    onClick={() => selectManifesto(card)}>
+                    <div className="p-3 d-flex justify-content-between align-items-center">
+                      <div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#DC2626', letterSpacing: '2px' }}>{card.placa}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>Man: {card.manifesto} · {card.motorista}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748B' }}>Filial: {card.filial}</div>
+                      </div>
+                      <div className="text-right">
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#DC2626' }}>{card.total_nfs}</div>
+                        <div style={{ fontSize: '0.7rem', color: '#94A3B8' }}>NFs</div>
+                        <div style={{ marginTop: '0.5rem', padding: '0.2rem 0.6rem', borderRadius: '20px', backgroundColor: '#FEF2F2', color: '#DC2626', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <RotateCcw size={10} /> Revisão
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
