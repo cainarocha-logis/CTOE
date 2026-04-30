@@ -19,13 +19,16 @@ const Login: React.FC = () => {
         </div>
         <div className="flex-column" style={{ display: 'flex', gap: '1rem' }}>
           <button className="btn btn-primary" onClick={() => handleLogin('driver')}>
-            Entrar como Motorista
+            Acesso Motorista
           </button>
-          <button className="btn btn-secondary" onClick={() => handleLogin('monitor')}>
-            Entrar como Monitor
+          <button className="btn btn-secondary" onClick={() => navigate('/armazem')}>
+            Módulo Armazém (Expedição)
           </button>
-          <button className="btn btn-secondary" onClick={() => handleLogin('dashboard')}>
-            Entrar como Gestor
+          <button className="btn btn-outline" onClick={() => handleLogin('monitor')}>
+            Painel do Monitor
+          </button>
+          <button className="btn btn-outline" onClick={() => handleLogin('dashboard')}>
+            Dashboard Gestor
           </button>
         </div>
       </div>
